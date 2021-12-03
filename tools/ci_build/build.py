@@ -1119,6 +1119,16 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
                 config_build_dir, "external", "tvm",
                 config) + os.pathsep + os.path.dirname(sys.executable) + os.pathsep + os.environ["PATH"]
 
+        if is_reduced_ops_build(args) and args.update:
+            reduced_ops_types_dir = os.path.join(config_build_dir, 'reduced_ops_types')
+            os.makedirs(reduced_ops_types_dir, exist_ok=True)
+            from reduce_op_kernels import reduce_ops
+            reduce_ops(
+                config_path=args.include_ops_by_config,
+                enable_type_reduction=args.enable_reduced_operator_type_support,
+                use_cuda=args.use_cuda,
+                output_path=reduced_ops_types_dir)
+
         run_subprocess(
             cmake_args + [
                 "-Donnxruntime_ENABLE_MEMLEAK_CHECKER=" +
@@ -2010,13 +2020,6 @@ def main():
 
     if args.skip_tests:
         args.test = False
-
-    if is_reduced_ops_build(args) and args.update:
-        from reduce_op_kernels import reduce_ops
-        reduce_ops(
-            config_path=args.include_ops_by_config,
-            enable_type_reduction=args.enable_reduced_operator_type_support,
-            use_cuda=args.use_cuda)
 
     if args.use_tensorrt:
         args.use_cuda = True

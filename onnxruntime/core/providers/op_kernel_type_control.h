@@ -481,5 +481,5 @@ struct EnabledTypes {
 #ifndef REDUCED_OP_TYPE_SUPPORT
 #include "core/providers/op_kernel_type_control_overrides.inc"
 #else
-#include "core/providers/op_kernel_type_control_overrides_reduced_types.inc"
+#include "op_kernel_type_control_overrides_reduced_types.inc"
 #endif

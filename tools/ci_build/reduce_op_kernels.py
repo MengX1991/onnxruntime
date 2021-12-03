@@ -99,7 +99,8 @@ class _ExcludingRegistrationProcessor(op_registration_utils.RegistrationProcesso
 def _process_provider_registrations(
         ort_root: str, use_cuda: bool,
         required_ops: typing.Optional[dict],
-        op_type_impl_filter: typing.Optional[OpTypeImplFilterInterface]):
+        op_type_impl_filter: typing.Optional[OpTypeImplFilterInterface],
+        output_path: str):
     '''Rewrite provider registration files.'''
     kernel_registration_files = op_registration_utils.get_kernel_registration_files(ort_root, use_cuda)
 
@@ -110,11 +111,12 @@ def _process_provider_registrations(
         log.info("Processing {}".format(kernel_registration_file))
 
         old_path = Path(kernel_registration_file)
-        reduced_path = Path(old_path.parent, f'{old_path.stem}{REDUCED_KERNEL_DEF_SUFFIX}{old_path.suffix}')
+        target_path = old_path.parent if not output_path else output_path
+        reduced_kernel_path = Path(target_path, f'{old_path.stem}{REDUCED_KERNEL_DEF_SUFFIX}{old_path.suffix}')
 
         # read from original and create the reduced kernel def file (*_reduced_ops.cc),
         # with commented out lines for any kernels that are not required
-        with open(reduced_path, 'w') as file_to_write:
+        with open(reduced_kernel_path, 'w') as file_to_write:
             processor = _ExcludingRegistrationProcessor(required_ops, op_type_impl_filter, file_to_write)
 
             op_registration_utils.process_kernel_registration_file(kernel_registration_file, processor)
@@ -124,14 +126,14 @@ def _process_provider_registrations(
                 sys.exit(-1)
 
         # enable the contents in the *_reduced_ops.cc
-        with open(reduced_path, 'r+') as file:
+        with open(reduced_kernel_path, 'r+') as file:
             file_content = file.read().replace(r'#ifndef REDUCED_OPS_BUILD', r'#ifdef REDUCED_OPS_BUILD')
 
-        with open(reduced_path, "w") as file_to_write:
+        with open(reduced_kernel_path, "w") as file_to_write:
             file_to_write.write(file_content)
 
 
-def _insert_type_control_cpp_code(ort_root: str, cpp_lines: typing.Sequence[str]):
+def _insert_type_control_cpp_code(ort_root: str, cpp_lines: typing.Sequence[str], output_path: str):
     '''
     Insert the C++ code to specify operator type requirements.
     :param ort_root: Root of the ONNX Runtime repository
@@ -145,7 +147,8 @@ def _insert_type_control_cpp_code(ort_root: str, cpp_lines: typing.Sequence[str]
 
     # create a copy of the op_kernel_type_control_overrides.inc even the cpp_lines is empty
     src_path = Path(src)
-    target = Path(src_path.parent, f'{src_path.stem}{REDUCED_TYPE_CONTROL_SUFFIX}{src_path.suffix}')
+    target_parent = src_path.parent if not output_path else output_path
+    target = Path(target_parent, f'{src_path.stem}{REDUCED_TYPE_CONTROL_SUFFIX}{src_path.suffix}')
     shutil.copyfile(src, target)
 
     if cpp_lines:
@@ -173,20 +176,24 @@ def _insert_type_control_cpp_code(ort_root: str, cpp_lines: typing.Sequence[str]
             raise RuntimeError('Insertion point was not found in {}'.format(target))
 
 
-def reduce_ops(config_path: str, enable_type_reduction: bool = False, use_cuda: bool = True):
+def reduce_ops(config_path: str, enable_type_reduction: bool = False,
+               use_cuda: bool = True, output_path: str = None):
     '''
     Reduce op kernel implementations.
     :param config_path: Path to configuration file that specifies the ops to include
     :param enable_type_reduction: Whether per operator type reduction is enabled
     :param use_cuda: Whether to reduce op kernels for the CUDA provider
     '''
+    if output_path and not os.path.isdir(output_path):
+        raise ValueError('Output path {} does not exist'.format(output_path))
+
     required_ops, op_type_impl_filter = parse_config(config_path, enable_type_reduction)
 
-    _process_provider_registrations(ort_root, use_cuda, required_ops, op_type_impl_filter)
+    _process_provider_registrations(ort_root, use_cuda, required_ops, op_type_impl_filter, output_path)
 
     if enable_type_reduction:
         type_control_cpp_code = op_type_impl_filter.get_cpp_entries() if op_type_impl_filter is not None else []
-        _insert_type_control_cpp_code(ort_root, type_control_cpp_code)
+        _insert_type_control_cpp_code(ort_root, type_control_cpp_code, output_path)
 
 
 if __name__ == "__main__":

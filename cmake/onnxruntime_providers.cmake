@@ -15,10 +15,22 @@ file(GLOB_RECURSE onnxruntime_cpu_contrib_ops_srcs CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/contrib_ops/cpu/*.cc"
 )
 
+if(onnxruntime_REDUCED_OPS_BUILD)
+  file(GLOB_RECURSE onnxruntime_providers_srcs_reduced CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_execution_provider_reduced_ops.cc")
+  file(GLOB_RECURSE onnxruntime_cpu_contrib_ops_srcs_reduced CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_contrib_kernels_reduced_ops.cc")
+endif()
+
 file(GLOB_RECURSE onnxruntime_cuda_contrib_ops_cc_srcs CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/contrib_ops/cuda/*.h"
   "${ONNXRUNTIME_ROOT}/contrib_ops/cuda/*.cc"
 )
+
+if(onnxruntime_REDUCED_OPS_BUILD AND onnxruntime_USE_CUDA)
+  file(GLOB_RECURSE onnxruntime_cuda_contrib_ops_cc_srcs_reduced CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_contrib_kernels_reduced_ops.cc")
+endif()
 
 file(GLOB_RECURSE onnxruntime_cuda_contrib_ops_cu_srcs CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/contrib_ops/cuda/*.cu"
@@ -49,8 +61,13 @@ file(GLOB_RECURSE onnxruntime_rocm_generated_contrib_ops_cu_srcs CONFIGURE_DEPEN
 file(GLOB onnxruntime_providers_common_srcs CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/core/providers/*.h"
   "${ONNXRUNTIME_ROOT}/core/providers/*.cc"
-  "${ONNXRUNTIME_ROOT}/core/providers/op_kernel_type_control_overrides*.inc"
+  "${ONNXRUNTIME_ROOT}/core/providers/op_kernel_type_control_overrides.inc"
 )
+
+if(onnxruntime_REDUCED_OP_TYPE_SUPPORT)
+  file(GLOB_RECURSE onnxruntime_providers_common_srcs_reduced CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/op_kernel_type_control_overrides_reduced_types.inc")
+endif()
 
 if(onnxruntime_USE_NUPHAR)
   set(PROVIDERS_NUPHAR onnxruntime_providers_nuphar)
@@ -95,13 +112,18 @@ endif()
 
 source_group(TREE ${ONNXRUNTIME_ROOT}/core FILES ${onnxruntime_providers_common_srcs} ${onnxruntime_providers_srcs})
 
-set(onnxruntime_providers_src ${onnxruntime_providers_common_srcs} ${onnxruntime_providers_srcs})
+set(onnxruntime_providers_src
+  ${onnxruntime_providers_common_srcs}
+  ${onnxruntime_providers_srcs}
+  ${onnxruntime_providers_common_srcs_reduced}
+  ${onnxruntime_providers_srcs_reduced}
+)
 
 # disable contrib ops conditionally
 if(NOT onnxruntime_DISABLE_CONTRIB_OPS)
   # add using ONNXRUNTIME_ROOT so they show up under the 'contrib_ops' folder in Visual Studio
   source_group(TREE ${ONNXRUNTIME_ROOT} FILES ${onnxruntime_cpu_contrib_ops_srcs})
-  list(APPEND onnxruntime_providers_src ${onnxruntime_cpu_contrib_ops_srcs})
+  list(APPEND onnxruntime_providers_src ${onnxruntime_cpu_contrib_ops_srcs} ${onnxruntime_cpu_contrib_ops_srcs_reduced})
 endif()
 
 
@@ -110,6 +132,12 @@ if (onnxruntime_ENABLE_TRAINING_OPS)
     "${ORTTRAINING_SOURCE_DIR}/training_ops/cpu/*.h"
     "${ORTTRAINING_SOURCE_DIR}/training_ops/cpu/*.cc"
   )
+
+  if(onnxruntime_REDUCED_OPS_BUILD)
+    file(GLOB_RECURSE onnxruntime_cpu_training_ops_srcs_reduced CONFIGURE_DEPENDS
+      "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_training_kernels_reduced_ops.cc")
+    list (APPEND onnxruntime_cpu_training_ops_srcs ${onnxruntime_cpu_training_ops_srcs_reduced})
+  endif()
 
   source_group(TREE ${ORTTRAINING_ROOT}/ FILES ${onnxruntime_cpu_training_ops_srcs})
   list(APPEND onnxruntime_providers_src ${onnxruntime_cpu_training_ops_srcs})
@@ -146,6 +174,11 @@ if (onnxruntime_ENABLE_TRAINING)
     "${ORTTRAINING_SOURCE_DIR}/core/framework/communication/*"
   )
 
+  if(onnxruntime_REDUCED_OPS_BUILD)
+    file(GLOB_RECURSE onnxruntime_cpu_training_ops_srcs_reduced CONFIGURE_DEPENDS
+      "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_training_kernels_reduced_ops.cc")
+  endif()
+
   # This is already built in framework.cmake
   file(GLOB_RECURSE onnxruntime_training_framework_excude_srcs CONFIGURE_DEPENDS
       "${ORTTRAINING_SOURCE_DIR}/core/framework/torch/*.h"
@@ -155,7 +188,7 @@ if (onnxruntime_ENABLE_TRAINING)
   list(REMOVE_ITEM onnxruntime_cpu_training_ops_srcs ${onnxruntime_training_framework_excude_srcs})
 
   source_group(TREE ${ORTTRAINING_ROOT}/ FILES ${onnxruntime_cpu_training_ops_srcs})
-  list(APPEND onnxruntime_providers_src ${onnxruntime_cpu_training_ops_srcs})
+  list(APPEND onnxruntime_providers_src ${onnxruntime_cpu_training_ops_srcs} ${onnxruntime_cpu_training_ops_srcs_reduced})
 
   # todo: put this in core/framework and enabled only for training
   file(GLOB_RECURSE onnxruntime_providers_dlpack_srcs CONFIGURE_DEPENDS
@@ -194,6 +227,10 @@ if(HAS_DEPRECATED_COPY)
 endif()
 
 target_include_directories(onnxruntime_providers PRIVATE ${ONNXRUNTIME_ROOT} ${eigen_INCLUDE_DIRS} ${RE2_INCLUDE_DIR})
+
+if(onnxruntime_REDUCED_OP_TYPE_SUPPORT)
+  target_include_directories(onnxruntime_providers PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/)
+endif()
 
 add_dependencies(onnxruntime_providers onnx ${onnxruntime_EXTERNAL_DEPENDENCIES})
 
@@ -260,6 +297,12 @@ if (onnxruntime_USE_CUDA)
     "${ONNXRUNTIME_ROOT}/core/providers/cuda/*.h"
     "${ONNXRUNTIME_ROOT}/core/providers/cuda/*.cc"
   )
+
+  if(onnxruntime_REDUCED_OPS_BUILD)
+    file(GLOB_RECURSE onnxruntime_providers_cuda_cc_srcs_reduced CONFIGURE_DEPENDS
+      "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_execution_provider_reduced_ops.cc")
+  endif()
+
   # The shared_library files are in a separate list since they use precompiled headers, and the above files have them disabled.
   file(GLOB_RECURSE onnxruntime_providers_cuda_shared_srcs CONFIGURE_DEPENDS
     "${ONNXRUNTIME_ROOT}/core/providers/shared_library/*.h"
@@ -271,13 +314,22 @@ if (onnxruntime_USE_CUDA)
   )
 
   source_group(TREE ${ONNXRUNTIME_ROOT}/core FILES ${onnxruntime_providers_cuda_cc_srcs} ${onnxruntime_providers_cuda_shared_srcs} ${onnxruntime_providers_cuda_cu_srcs})
-  set(onnxruntime_providers_cuda_src ${onnxruntime_providers_cuda_cc_srcs} ${onnxruntime_providers_cuda_shared_srcs} ${onnxruntime_providers_cuda_cu_srcs})
+  set(onnxruntime_providers_cuda_src
+    ${onnxruntime_providers_cuda_cc_srcs}
+    ${onnxruntime_providers_cuda_shared_srcs}
+    ${onnxruntime_providers_cuda_cu_srcs}
+    ${onnxruntime_providers_cuda_cc_srcs_reduced}
+  )
 
   # disable contrib ops conditionally
   if(NOT onnxruntime_DISABLE_CONTRIB_OPS)
     # add using ONNXRUNTIME_ROOT so they show up under the 'contrib_ops' folder in Visual Studio
     source_group(TREE ${ONNXRUNTIME_ROOT} FILES ${onnxruntime_cuda_contrib_ops_cc_srcs} ${onnxruntime_cuda_contrib_ops_cu_srcs})
-    list(APPEND onnxruntime_providers_cuda_src ${onnxruntime_cuda_contrib_ops_cc_srcs} ${onnxruntime_cuda_contrib_ops_cu_srcs})
+    list(APPEND onnxruntime_providers_cuda_src
+      ${onnxruntime_cuda_contrib_ops_cc_srcs}
+      ${onnxruntime_cuda_contrib_ops_cu_srcs}
+      ${onnxruntime_cuda_contrib_ops_cc_srcs_reduced}
+    )
   endif()
 
   if (onnxruntime_ENABLE_TRAINING OR onnxruntime_ENABLE_TRAINING_OPS)
@@ -287,6 +339,11 @@ if (onnxruntime_USE_CUDA)
       "${ORTTRAINING_SOURCE_DIR}/training_ops/cuda/communication/*.h"
       "${ORTTRAINING_SOURCE_DIR}/training_ops/cuda/communication/*.cc"
     )
+
+    if(onnxruntime_REDUCED_OPS_BUILD)
+      file(GLOB_RECURSE onnxruntime_cuda_training_ops_cc_srcs_reduced CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_training_kernels_reduced_ops.cc")
+    endif()
 
     file(GLOB_RECURSE onnxruntime_cuda_training_ops_cu_srcs CONFIGURE_DEPENDS
       "${ORTTRAINING_SOURCE_DIR}/training_ops/cuda/*.cu"
@@ -311,7 +368,11 @@ if (onnxruntime_USE_CUDA)
     endif()
 
     source_group(TREE ${ORTTRAINING_ROOT} FILES ${onnxruntime_cuda_training_ops_cc_srcs} ${onnxruntime_cuda_training_ops_cu_srcs})
-    list(APPEND onnxruntime_providers_cuda_src ${onnxruntime_cuda_training_ops_cc_srcs} ${onnxruntime_cuda_training_ops_cu_srcs})
+    list(APPEND onnxruntime_providers_cuda_src
+      ${onnxruntime_cuda_training_ops_cc_srcs}
+      ${onnxruntime_cuda_training_ops_cu_srcs}
+      ${onnxruntime_cuda_training_ops_cc_srcs_reduced}
+    )
   endif()
 
   onnxruntime_add_shared_library_module(onnxruntime_providers_cuda ${onnxruntime_providers_cuda_src})
@@ -655,7 +716,7 @@ if (onnxruntime_USE_OPENVINO)
   else()
     list(APPEND OPENVINO_LIB_LIST ${InferenceEngine_LIBRARIES} ${NGRAPH_LIBRARIES} ngraph::onnx_importer ${PYTHON_LIBRARIES})
   endif()
-  
+
   source_group(TREE ${ONNXRUNTIME_ROOT}/core FILES ${onnxruntime_providers_openvino_cc_srcs})
   onnxruntime_add_shared_library_module(onnxruntime_providers_openvino ${onnxruntime_providers_openvino_cc_srcs})
   onnxruntime_add_include_to_target(onnxruntime_providers_openvino onnxruntime_common onnx)

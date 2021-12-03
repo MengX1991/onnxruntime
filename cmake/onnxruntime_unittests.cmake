@@ -305,13 +305,25 @@ if (onnxruntime_ENABLE_TRAINING)
     "${ORTTRAINING_SOURCE_DIR}/test/training_ops/function_op_test_utils.cc"
     "${ORTTRAINING_SOURCE_DIR}/test/training_ops/cpu/*"
     )
-  list(APPEND onnxruntime_test_providers_src ${orttraining_test_trainingops_cpu_src})
+
+  if(onnxruntime_REDUCED_OPS_BUILD)
+    file(GLOB_RECURSE orttraining_test_trainingops_cpu_src_reduced CONFIGURE_DEPENDS
+      "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_training_kernels_reduced_ops.cc")
+  endif()
+
+  list(APPEND onnxruntime_test_providers_src ${orttraining_test_trainingops_cpu_src} ${orttraining_test_trainingops_cpu_src_reduced})
 
   if (onnxruntime_USE_CUDA OR onnxruntime_USE_ROCM)
     file(GLOB_RECURSE orttraining_test_trainingops_cuda_src CONFIGURE_DEPENDS
       "${ORTTRAINING_SOURCE_DIR}/test/training_ops/cuda/*"
       )
-    list(APPEND onnxruntime_test_providers_src ${orttraining_test_trainingops_cuda_src})
+
+    if(onnxruntime_REDUCED_OPS_BUILD)
+      file(GLOB_RECURSE orttraining_test_trainingops_cuda_src_reduced CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_training_kernels_reduced_ops.cc")
+    endif()
+
+    list(APPEND onnxruntime_test_providers_src ${orttraining_test_trainingops_cuda_src} ${orttraining_test_trainingops_cuda_src_reduced})
   endif()
 endif()
 
