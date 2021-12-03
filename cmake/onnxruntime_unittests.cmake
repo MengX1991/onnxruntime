@@ -307,7 +307,7 @@ if (onnxruntime_ENABLE_TRAINING)
     )
 
   if(onnxruntime_REDUCED_OPS_BUILD)
-    file(GLOB_RECURSE orttraining_test_trainingops_cpu_src_reduced CONFIGURE_DEPENDS
+    file(GLOB orttraining_test_trainingops_cpu_src_reduced CONFIGURE_DEPENDS
       "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_training_kernels_reduced_ops.cc")
   endif()
 
@@ -319,7 +319,7 @@ if (onnxruntime_ENABLE_TRAINING)
       )
 
     if(onnxruntime_REDUCED_OPS_BUILD)
-      file(GLOB_RECURSE orttraining_test_trainingops_cuda_src_reduced CONFIGURE_DEPENDS
+      file(GLOB orttraining_test_trainingops_cuda_src_reduced CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_training_kernels_reduced_ops.cc")
     endif()
 

@@ -16,9 +16,9 @@ file(GLOB_RECURSE onnxruntime_cpu_contrib_ops_srcs CONFIGURE_DEPENDS
 )
 
 if(onnxruntime_REDUCED_OPS_BUILD)
-  file(GLOB_RECURSE onnxruntime_providers_srcs_reduced CONFIGURE_DEPENDS
+  file(GLOB onnxruntime_providers_srcs_reduced CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_execution_provider_reduced_ops.cc")
-  file(GLOB_RECURSE onnxruntime_cpu_contrib_ops_srcs_reduced CONFIGURE_DEPENDS
+  file(GLOB onnxruntime_cpu_contrib_ops_srcs_reduced CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_contrib_kernels_reduced_ops.cc")
 endif()
 
@@ -134,7 +134,7 @@ if (onnxruntime_ENABLE_TRAINING_OPS)
   )
 
   if(onnxruntime_REDUCED_OPS_BUILD)
-    file(GLOB_RECURSE onnxruntime_cpu_training_ops_srcs_reduced CONFIGURE_DEPENDS
+    file(GLOB onnxruntime_cpu_training_ops_srcs_reduced CONFIGURE_DEPENDS
       "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_training_kernels_reduced_ops.cc")
     list (APPEND onnxruntime_cpu_training_ops_srcs ${onnxruntime_cpu_training_ops_srcs_reduced})
   endif()
@@ -175,7 +175,7 @@ if (onnxruntime_ENABLE_TRAINING)
   )
 
   if(onnxruntime_REDUCED_OPS_BUILD)
-    file(GLOB_RECURSE onnxruntime_cpu_training_ops_srcs_reduced CONFIGURE_DEPENDS
+    file(GLOB onnxruntime_cpu_training_ops_srcs_reduced CONFIGURE_DEPENDS
       "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cpu_training_kernels_reduced_ops.cc")
   endif()
 
@@ -299,7 +299,7 @@ if (onnxruntime_USE_CUDA)
   )
 
   if(onnxruntime_REDUCED_OPS_BUILD)
-    file(GLOB_RECURSE onnxruntime_providers_cuda_cc_srcs_reduced CONFIGURE_DEPENDS
+    file(GLOB onnxruntime_providers_cuda_cc_srcs_reduced CONFIGURE_DEPENDS
       "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_execution_provider_reduced_ops.cc")
   endif()
 
@@ -341,7 +341,7 @@ if (onnxruntime_USE_CUDA)
     )
 
     if(onnxruntime_REDUCED_OPS_BUILD)
-      file(GLOB_RECURSE onnxruntime_cuda_training_ops_cc_srcs_reduced CONFIGURE_DEPENDS
+      file(GLOB onnxruntime_cuda_training_ops_cc_srcs_reduced CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_BINARY_DIR}/reduced_ops_types/cuda_training_kernels_reduced_ops.cc")
     endif()
 
